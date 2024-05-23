@@ -1,5 +1,6 @@
 import ConditionalComponent from "./components/ConditionalComponent";
 import CounterState from "./components/CounterState";
+import Form from "./components/Form";
 import Fruits from "./components/Fruits";
 import Hello from "./components/Hello";
 import Message from "./components/Message";
@@ -19,7 +20,7 @@ function App() {
     <div className="App">
       <Hello person={person} />
 
-      <CounterState />
+      <Form />
     </div>
   );
 }

@@ -1,0 +1,396 @@
+
+import React from "react";
+import { Controller } from "react-hook-form";
+import { TextField } from "@fluentui/react";
+import IconLabel from "./IconLabel";
+ 
+interface Props {
+  control: any;
+  description?: string;
+  styles: any;
+  name: string;
+  label?: string;
+  placeholder?: string;
+  type: string;
+  required?: boolean;
+  icon?: string;
+  multiline?: boolean;
+  renderLabelIcon?: boolean;
+  hideErrorMessage?: boolean;
+  onKeydown?: (event: React.KeyboardEvent<HTMLInputElement>) => void; // Correctly define the type of onKeyDown
+  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void; // Add the onChange property
+}
+ 
+ 
+const TextInput = ({
+  control,
+  description,
+  styles,
+  name,
+  label,
+  placeholder,
+  type,
+  required,
+  icon,
+  multiline,
+  renderLabelIcon,
+  hideErrorMessage,
+  onKeydown,
+  onChange, // Accept onChange prop here
+}: Props) => {
+  return (
+    <Controller
+      name={name}
+      control={control}
+      defaultValue={type === "text" ? "" : 0}
+      render={({ field, fieldState: { error } }) => (
+        <TextField
+          {...field}
+          description={description}
+          errorMessage={!hideErrorMessage && error ? error.message : undefined}
+          iconProps={{ iconName: icon }}
+          label={label}
+          multiline={multiline}
+          rows={multiline ? 3 : undefined}
+          placeholder={placeholder}
+          required={required}
+          styles={styles.textField}
+          type={type}
+          onKeyDown={onKeydown}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            field.onChange(e); // Notify react-hook-form about changes
+            onChange?.(e); // Forward the onChange event to the parent component if provided
+          }}
+          onRenderLabel={
+            renderLabelIcon
+              ? (props, defaultRender) => {
+                if (!props || !defaultRender) return null;
+ 
+                  return (
+                    <IconLabel
+                      props={props}
+                      defaultRender={defaultRender}
+                      iconName={type === "text" ? "TextField" : "NumberField"}
+                    />
+                  );
+                }
+              : undefined
+          }
+        />
+      )}
+    />
+  );
+};
+ 
+ 
+ 
+ 
+ 
+export default TextInput;
+
+
+=======
+import React, { useState } from "react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { IconButton, Stack, Text } from "@fluentui/react";
+import { usePageUser, useTaskId } from "../../../../../global/store";
+import { useAllSiteUsers } from "../../../../../utils/hooks/SiteUsers";
+import { useAddComment } from "../../../../../utils/hooks/Comments";
+import { commentSchema } from "../../../Popups/components/schema";
+import Comments from "./Comments";
+import TextInput from "../TextInput";
+ 
+const styles = {
+  stack: {
+    root: {
+      background: "#f3f2f1",
+      padding: "12px",
+    },
+  },
+  text: {
+    root: {
+      marginBottom: "10px",
+    },
+  },
+ 
+  textField: {
+    root: {
+      minWidth: "287px",
+      maxWidth: "287px",
+    },
+  },
+};
+ 
+const CommentContainer = () => {
+  const {
+    control,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { isValid: isFormValid },
+  } = useForm({
+    resolver: yupResolver(commentSchema),
+    reValidateMode: "onSubmit",
+    mode: "all",
+  });
+  const { data: allUsers } = useAllSiteUsers();
+  const pageUser = usePageUser((state) => state.pageUser);
+  const taskId = useTaskId((state) => state.taskId);
+  const { mutate: addComment } = useAddComment(); // use mutate from useAddComment hook
+ 
+  const [isUserDropdownActive, setIsUserDropdownActive] = React.useState(false);
+  // const [userMention, setUserMention] = React.useState<string>("");
+  const [userMentionIndex, setUserMentionIndex] = React.useState<number>(0);
+  const currentCommentValue=watch("Title");
+ 
+  const onSubmit = (data: any) => {
+    try {
+      if (allUsers) {
+        const author = allUsers.find((user) => user.Email === pageUser.email);
+        data.Author0Id = author?.Id;
+        data.TaskId = taskId;
+        data.AuthorName = pageUser.displayName;
+ 
+        addComment(data);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+ 
+  const [filteredUsers, setFilteredUsers] = React.useState(allUsers);
+ 
+const handleCommentSectionKeyboarddown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const { value } = event.currentTarget;
+  if (value.includes("@")) {
+    setIsUserDropdownActive(true); // Show user dropdown
+    setFilteredUsers(
+      allUsers?.filter((user) =>
+        user.Title.toLowerCase().includes(value.toLowerCase())
+      ) ?? []
+    );
+  }
+};
+ 
+const handleUserSelection = (user: any) => {
+  // setUserMention(`@${user.Title}`); // Update comment body with selected user mention
+  setIsUserDropdownActive(false); // Hide dropdown after selection
+  setValue("Title", currentCommentValue.replace(`@${currentCommentValue.split("@")[1]}`, `${user.Title}`));
+};
+ 
+const handleCommentSectionInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const { value } = event.currentTarget;
+  if (value.includes("@")) {
+    setIsUserDropdownActive(true); // Show user dropdown
+    // Filter users based on input value
+    setFilteredUsers(
+      allUsers?.filter((user) =>
+        user.Title.toLowerCase().includes(value.toLowerCase().split("@")[1])
+      ) ?? []
+    );
+  } else {
+    setIsUserDropdownActive(false); // Hide user dropdown if "@" is removed
+  }
+};
+ 
+ 
+  return (
+    <Stack styles={styles.stack}>
+      <Text variant="large" styles={styles.text}>
+        Comments
+      </Text>
+ 
+      <div className="textFieldWithButton">
+        <TextInput
+  control={control}
+  hideErrorMessage
+  multiline={isFormValid}
+  name="Title"
+  placeholder={`Add a comment here`}
+  styles={styles}
+  type="text"
+  onChange={handleCommentSectionInputChange}
+/>
+ 
+        {isFormValid && (
+          <IconButton
+            iconProps={{ iconName: "Send" }}
+            ariaLabel="Add Comment"
+            onClick={handleSubmit(onSubmit)}
+            className="textFieldButton"
+          />
+        )}
+      </div>
+ 
+      {isUserDropdownActive ? (
+        <div className="userDropdown">
+          <ul>
+            {filteredUsers?.map((user) => (
+              <li key={user.Id} onClick={() => handleUserSelection(user)}>
+                {user.Title}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+ 
+      <Stack>
+        <Comments />
+      </Stack>
+    </Stack>
+  );
+};
+ 
+export default CommentContainer;
+
+
+
+
+===================================
+git stash
+git stash po
+
+-----------------------------------UPDATE FROM dev branch
+git add .
+git commit -m "Committing changes before updating from dev branch"
+
+git checkout dev
+
+git pull origin dev
+
+git checkout 80-change-menu-into-fluent-ui
+
+git merge dev
+
+-----------------------------------Push to current branch
+git status
+
+git add .
+git add src/webparts/dashboard/components/widgets/Forms/TaskForms/components/TextInput.tsx
+
+
+git commit -m "Fix bug on the Comments/ User mention"
+
+
+git push origin 76-task-comments-and-ea
+git push origin 80-change-menu-into-fluent-ui
+git push origin 101-move-the-add-column-popup-to-be-a-side-panel0
+git push origin 42-hover-effect-on-column-titles-which-will-show-the-filter-icon-only-when-hovering-the-specific-column-title
+git push origin 86-drag-and-drop-column-reordering0
+git push origin 82-enhance-subtask-creation
+git push origin 131-add-an-icon-to-communicate-to-a-user-the-ability-to-select-a-row0
+git push origin 105-make-title-priority-asignee-and-deadline-default-columns-on-a-view
+git push origin 130-enforce-unique-names-when-adding-columns
+git push origin 168-fix-the-edit-button-bug-preventing-closing-and-opening-of-list-view-groups0
+
+git push origin 108-collapse-all-expanded-fields-using-a-ui-element-on-the-first-column
+------------------
+//after creating branch
+//pull the new branch to my local
+git fetch origin 82-enhance-subtask-creation
+
+git checkout 101-move-the-add-column-popup-to-be-a-side-panel0
+==================================================================
+
+
+-------------------------------------MERGE WITH dev branch after pushing to current branch
+git checkout dev
+
+git merge 76-task-comments-and-mentions0
+
+
+Resolve Conflicts (if any):
+If there are any merge conflicts during the merge process, resolve them manually in your 
+code editor. Once resolved, stage the resolved files using git add <resolved-file> and commit the changes.
+
+After resolving any conflicts and committing the merged changes, push the changes to the remote dev branch
+
+git push origin dev
+
+
+//switch back to your branch 
+git checkout 76-task-comments-and-mentions0
+
+--------------------------------------------------------------------------------------------------------------
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+//reset your working directory to the last commit
+git reset --hard HEAD
+git pull
+
+
+
+
+
+
+
+
+
+chepkiruimercy941@yahoo.com
+MercyChep41834365
+
+-------------
+chepkemoisheilla539@gmail.com
+
+-Comment section dissapearing cursor, design to include users initials
+-Column section, able to add column?
+
+
+
+https://codepen.io/webrav/pen/gMPppj   //sample web 
+
+
+git fetch origin
+git checkout 86-drag-and-drop-column-reordering
+
+onCellHover rowType: header
+
+columnIndex
+
+headerCellRender
+
+326 --- RETURN (PROPS)
+
+236
+const onContextMenuPreparing --- methods
+
+https://www.w3schools.com/colors/colors_picker.asp
+
+#####################################################################
+DEPLOY
+-Update package-solution.json
+-Update Merge into dev
+-At dev branch, .\scripts\deploy.ps1
+-Upload at https://itservicesia365.sharepoint.com/sites/appcatalog/_layouts/15/tenantAppCatalog.aspx/manageApps
+	-..Open down link, More Features, Apps Open, Upload Package 
+
+= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+Done, But Pendings
+= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+-Comment Section Proposed Design
+	//Is Reordering Persistence Working?
+-Adding and Greying out default selections when adding/ editing views.
+-Reloading when single selecting a task to edit.
+
+==========
+Hello
+Deployed the following;
+Making title, priority, assignee status and deadline to be defaults on a view
+Able to enforce unique names when adding columns to avoid duplicates.
+
+
+========
+
+Starting Message 13-05-2024
+ Daily standup
+ Fix the edit section padding
+ Update the task icons renames, hide edit icon
+ Fix the bug on Groupings double click (Avoid the pop up)
+
+
+git branch -M main  //change to branch main
+/////////////////////////////////////////////////////////
+https://incourage.applytojob.com/apply/9T7Nwu9NMK/Backend-Engineer?utm_source=MyJobMag  //incourage apply
+https://www.myjobmag.co.ke/job/software-developer-machakos-university			//machakos apply
+https://jobs.lever.co/ppgreatplains/08a6a8de-a01d-4049-a567-7907d878dcba/apply?utm_source=MyJobMag	..health records apply

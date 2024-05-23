@@ -336,7 +336,50 @@ const [count, setCount] = useState(0); //sets the initial value of count to be z
 
 General rule in React is that a state of a component should be declared above the component.
 
-//CounterState.jsx
+{CounterState.jsx}
 = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+
+//Handling Input Fields
+
+Form.jsx
+........
+import { useState } from "react";
+
+export default function Form() {
+const [name, setName] = useState("");
+
+function handleChange(e) {
+//3. handleChange receives the particular event
+//console.log(e.target.value);
+
+    setName(e.target.value)
+
+}
+return (
+<div>
+<form>
+<input
+
+         //onChange={function demo(e) {
+            //1. when the onChange happens, demo fn gets executed, which gets the event 'e'
+         //   return handleChange(e); //2. event will then be passed to this callback fn 'handleChange'
+         // }}
+
+
+         //simplest way for the above
+         onChange={(e) => handleChange(e)} type="text" value={name}
+        />
+      </form>
+    </div>
+
+);
+}
+
+{object} //this is an object.
+
+//simplest way
+Form.jsx
+........
+
 = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
